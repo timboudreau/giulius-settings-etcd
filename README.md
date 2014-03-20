@@ -7,7 +7,7 @@ An extension to [Giulius](https://github.com/timboudreau/giulius) for loading se
 Available from [this maven repository](http://timboudreau.com/builds/).
 
 Basically this allows you to have settings (typically used as Guice @Named values) which are periodically
-refreshed from one or more instances of Etcd, a high-availability, clustered key-value store which is
+refreshed from one or more instances of Etcd, a high-availability, clustered, atomic key-value store which is
 like Apache Zookeeper minus the awfulness.
 
 It also includes:
