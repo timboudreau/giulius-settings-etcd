@@ -88,7 +88,7 @@ public class EtcdModule extends AbstractModule {
      * default is /, meaning everything. If a one etcd cluser may serve multiple
      * applications, it is a good idea to use a namespace.
      */
-    public static final String SETTINGS_KEY_ETCD_NAMESPACE = "etcd.namespace";
+        public static final String SETTINGS_KEY_ETCD_NAMESPACE = "etcd.namespace";
     /**
      * The default namespace
      */
@@ -111,7 +111,7 @@ public class EtcdModule extends AbstractModule {
      * before it is taken out of the list of preferred ones, and calling it
      * becomes a last resort if all others fail.
      */
-    public static final String SETTINGS_KEY_MAX_FAILS_TO_DISABLE = "etcd.max.failes.to.disable";
+    public static final String SETTINGS_KEY_MAX_FAILS_TO_DISABLE = "etcd.max.fails.to.disable";
     /**
      * The default number of fails needed to consider an etcd server
      * out-of-business
