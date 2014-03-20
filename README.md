@@ -33,8 +33,9 @@ your settings a second time for production purposes.
 		// and the classpath
 		SettingsBuilder sb = SettingsBuilder.createWithDefaults("my-app");
 
-		// Use those to determine the etcd cluster settings
-		EtcdSettings clusterSettings = EtcdModule.create(sb.build()); //loads servers/timeouts from disk/classpath
+		// Use those to determine the etcd cluster settings - i.e. urls
+		// for servers, etc.
+		EtcdSettings clusterSettings = EtcdModule.create(sb.build());
 
 		// Now build the settings the application's injector will use, which
 		// use values from etcd, and fallback values from disk/classpth
