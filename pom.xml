@@ -24,7 +24,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>giulius-settings</artifactId>
-            <version>1.4.13</version>
             <type>jar</type>
         </dependency>
         <dependency>
@@ -35,20 +34,32 @@
         <dependency>
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
-            <version>4.0-beta</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
-            <version>2.3</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.mastfrog</groupId>
             <artifactId>giulius</artifactId>
-            <version>1.4.13</version>
             <type>jar</type>
         </dependency>
     </dependencies>
+    <repositories>
+        <repository>
+            <id>timboudreau-builds</id>
+            <name>timboudreau.com builds</name>
+            <url>http://timboudreau.com/builds/plugin/repository/everything/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>
 </project>
