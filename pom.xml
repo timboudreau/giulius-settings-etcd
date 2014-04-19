@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.mastfrog</groupId>
-        <version>1.4.15</version>
+        <version>1.4.16</version>
         <artifactId>mastfrog-parent</artifactId>
     </parent>
     <artifactId>giulius-settings-etcd</artifactId>
@@ -30,7 +30,7 @@
         <dependency>
             <groupId>com.justinsb</groupId>
             <artifactId>etcd-client</artifactId>
-            <version>0.2-tboudreau-fork</version>
+            <version>0.3-tboudreau-fork</version>
         </dependency>
         <dependency>
             <groupId>com.google.inject</groupId>
