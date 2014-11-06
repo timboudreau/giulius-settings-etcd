@@ -5,8 +5,10 @@
         <groupId>com.mastfrog</groupId>
         <version>1.5.0</version>
         <artifactId>mastfrog-parent</artifactId>
+        <relativePath/>
     </parent>
     <artifactId>giulius-settings-etcd</artifactId>
+    <name>Etcd Settings</name>
     <packaging>jar</packaging>
     <build>
         <plugins>
