@@ -182,6 +182,7 @@ public class EtcdModule extends AbstractModule {
         return create(s, deps);
     }
 
+    @SuppressWarnings("unchecked")
     public static Settings create(Settings s, Receiver<?>... dep) throws IOException {
         Dependencies deps = new Dependencies(s, new EtcdModule(s));
         for (Receiver r : dep) {
@@ -206,6 +207,7 @@ public class EtcdModule extends AbstractModule {
         return createMutable(s, deps);
     }
 
+    @SuppressWarnings("unchecked")
     public static MutableSettings createMutable(Settings s, Receiver<?>... dep) throws IOException {
         Dependencies deps = new Dependencies(s, new EtcdModule(s));
         for (Receiver r : dep) {
