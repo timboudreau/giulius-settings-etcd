@@ -1,5 +1,6 @@
-<?xml version="1.0"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.mastfrog</groupId>
@@ -9,7 +10,6 @@
     </parent>
     <artifactId>giulius-settings-etcd</artifactId>
     <name>Etcd Settings</name>
-    <packaging>jar</packaging>
     <build>
         <plugins>
             <plugin>
@@ -26,27 +26,22 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>giulius-settings</artifactId>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.justinsb</groupId>
             <artifactId>etcd-client</artifactId>
-            <version>0.3-tboudreau-fork</version>
         </dependency>
         <dependency>
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.mastfrog</groupId>
             <artifactId>giulius</artifactId>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.mastfrog</groupId>
