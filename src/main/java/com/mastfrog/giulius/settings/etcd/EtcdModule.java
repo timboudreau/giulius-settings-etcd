@@ -34,7 +34,7 @@ import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.settings.MutableSettings;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.thread.Receiver;
 import java.io.IOException;
 import java.net.URI;
