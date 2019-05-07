@@ -3,33 +3,68 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.mastfrog</groupId>
-        <version>2.5.0</version>
+        <version>2.5.1-dev</version>
         <artifactId>mastfrog-parent</artifactId>
         <relativePath/>
     </parent>
     <artifactId>giulius-settings-etcd</artifactId>
     <url>https://github.com/timboudreau/giulius-settings-etcd</url>
     <name>Etcd Settings</name>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.2</version>
-                <configuration>
-                    <showDeprecation>true</showDeprecation>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+    <properties>
+        <enforcer.skip>true</enforcer.skip>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>giulius-settings</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.justinsb</groupId>
-            <artifactId>etcd-client</artifactId>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>giulius-threadpool</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>giulius-tests</artifactId>
+            <scope>test</scope>
+        </dependency>        
+        <dependency>
+            <groupId>com.ibm.etcd</groupId>
+            <artifactId>etcd-java</artifactId>
+            <version>0.0.10</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-codec</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-codec-http2</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-codec-socks</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-common</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-handler-proxy</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-transport-native-unix-common</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-transport</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-buffer</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.google.inject</groupId>
@@ -44,8 +79,55 @@
             <artifactId>giulius</artifactId>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>netty-http-client</artifactId>
+            <groupId>com.mastfrog</groupId>
+            <artifactId>util-net</artifactId>
+            <scope>test</scope>
+            <type>jar</type>
+        </dependency>
+        <!-- 
+             Ensure we don't mix versions - etcd-java does, with
+             occasional NoClassDefFoundErrors when mixing the wrong
+             versions (e.g. netty 4.1.34 and 4.1.36 tries to load
+             utility classes that don't exist in 4.1.36 from one of
+             its jars).
+        -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http2</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-socks</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-common</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-handler-proxy</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-unix-common</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
         </dependency>
     </dependencies>
     <repositories>
@@ -72,7 +154,6 @@
         <connection>scm:git:https://github.com/timboudreau/giulius-settings-etcd</connection>
         <developerConnection>git@github.com/timboudreau/giulius-settings-etcd</developerConnection>
     </scm>
-    
     <organization>
         <name>Mastfrog Technologies</name>
         <url>https://mastfrog.com</url>

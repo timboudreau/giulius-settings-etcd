@@ -23,27 +23,39 @@
  */
 package com.mastfrog.giulius.settings.etcd;
 
+import com.google.common.io.ByteSource;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.name.Named;
-import com.google.inject.name.Names;
-import com.justinsb.etcd.EtcdClient;
-import com.mastfrog.giulius.Dependencies;
+import com.ibm.etcd.client.EtcdClient;
+import com.ibm.etcd.client.kv.KvClient;
+import com.ibm.etcd.client.lease.LeaseClient;
+import com.ibm.etcd.client.lease.PersistentLease;
+import com.ibm.etcd.client.lock.LockClient;
+import com.mastfrog.function.throwing.ThrowingSupplier;
+import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.giulius.ShutdownHookRegistry;
-import com.mastfrog.netty.http.client.HttpClient;
-import com.mastfrog.settings.MutableSettings;
+import com.mastfrog.giulius.thread.ThreadModule;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.settings.SettingsBuilder;
+import com.mastfrog.util.preconditions.ConfigurationError;
 import com.mastfrog.util.preconditions.Exceptions;
-import com.mastfrog.util.thread.Receiver;
+import com.mastfrog.util.strings.Strings;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import org.joda.time.Duration;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import javax.inject.Singleton;
+import javax.net.ssl.TrustManagerFactory;
 
 /**
  * Sets up bindings for Etcd
@@ -58,65 +70,36 @@ public class EtcdModule extends AbstractModule {
      * clients, in which case calls will attempt to use all the specified
      * clients before failing. Default is to use the local machine.
      */
-    public static final String SETTINGS_KEY_ETCD_URL = "etcd.url";
+    public static final String SETTINGS_KEY_ETCD_ENDPOINTS = "etcd.endpoints";
     /**
      * Value of the default etcd url
      */
-    public static final String DEFAULT_ETCD_URL = "http://127.0.0.1:4001";
+    public static final String DEFAULT_ETCD_ENDPOINT = "0.0.0.0:2379";
 
-    /**
-     * Settings key for the interval in seconds between settings refreshes
-     */
-    public static final String SETTINGS_KEY_ETCD_REFRESH_INTERVAL_SECONDS = "etcd.settings.refresh.seconds";
-    public static final long DEFAULT_ETCD_REFRESH_INTERVAL_SECONDS = 23;
+    public static final String SETTINGS_KEY_ETCD_NETWORK_THREAD_COUNT = "etcd.network.threads";
+    private static final int DEFAULT_ETCD_NETWORK_THREAD_COUNT = 3;
 
-    /**
-     * Guice &#064;Named injection key for a Joda-Time Duration with the refresh
-     * interval
-     */
-    public static final String GUICE_BINDING_ETCD_REFRESH_INTERVAL = "etcd.settings.refresh.interval";
-    /**
-     * Guice &#064;Named injection key for the ScheduledExecutorService which
-     * runs refresh
-     */
-    public static final String GUICE_BINDING_ETCD_REFRESH_THREAD_POOL = "etcd.settings.refresh.threadpool";
+    static final String ETCD_THREADPOOL_BINDING = "_etcdThreads";
 
-    public static final String GUICE_BINDING_HTTP_CLIENT = "etcd.http.client";
+    public static final String SETTINGS_KEY_ETCD_SEND_VIA_EVENT_LOOP = "etcd.send.via.event.loop";
+    static final boolean DEFAULT_ETCD_SEND_VIA_EVENT_LOOP = true;
 
-    /**
-     * The namespace or keyspace to look in within etcd for settings. The
-     * default is /, meaning everything. If a one etcd cluser may serve multiple
-     * applications, it is a good idea to use a namespace.
-     */
-        public static final String SETTINGS_KEY_ETCD_NAMESPACE = "etcd.namespace";
-    /**
-     * The default namespace
-     */
-    public static final String DEFAULT_ETCD_NAMESPACE = "/";
+    public static final String SETTINGS_KEY_ETCD_IMMEDIATE_AUTH = "etcd.immediate.auth";
+    static final boolean DEFAULT_ETCD_IMMEDIATE_AUTH = false;
 
-    /**
-     * The number of times to try all the known etcd servers to answer a call to
-     * MetaEtcdClient before raising an error to the caller.
-     */
-    public static final String SETTINGS_KEY_MAX_RETRIES = "etcd.max.retries";
-    public static final int DEFAULT_MAX_RETRIES = 10;
-    /**
-     * The amount of time after too many failures, during which an etcd client
-     * should not be in the list of first-choice ones to query. In seconds.
-     */
-    public static final String SETTINGS_KEY_FAIL_WINDOW = "etcd.fail.window.seconds";
-    public static final int DEFAULT_FAIL_WINDOW = 30;
-    /**
-     * The maximum number of times a call to a single etcd server should fail
-     * before it is taken out of the list of preferred ones, and calling it
-     * becomes a last resort if all others fail.
-     */
-    public static final String SETTINGS_KEY_MAX_FAILS_TO_DISABLE = "etcd.max.fails.to.disable";
-    /**
-     * The default number of fails needed to consider an etcd server
-     * out-of-business
-     */
-    public static final int DEFAULT_MAX_FAILS_TO_DISABLE = 3;
+    public static final String SETTINGS_KEY_ETCD_MAX_INBOUND_MESSAGE_SIZE = "etcd.max.inbound.message.size";
+    static final int DEFAULT_ETCD_MAX_INBOUND_MESSAGE_SIZE = 2048;
+
+    public static final String SETTINGS_KEY_ETCD_DEFAULT_TIMEOUT_MS = "etcd.default.timeout.ms";
+
+    public static final String SETTINGS_KEY_ETCD_USER = "etcd.user";
+    public static final String SETTINGS_KEY_ETCD_PASSWORD = "etcd.password";
+    public static final String ENV_KEY_ETCD_USER = "ETCD_USER";
+    public static final String ENV_KEY_ETCD_PASSWORD = "ETCD_PASSWORD";
+
+    public static final String SETTINGS_KEY_ETCD_SESSION_TIMEOUT_SECONDS = "etc.dsession.timeout.seconds";
+    public static final String SETTINGS_KEY_ETCD_PLAIN_TEXT = "etcd.plain.text";
+    public static final String SETTINGS_KEY_ETCD_CERT = "etcd.cert.file";
 
     public EtcdModule(Settings settings) {
         this.settings = settings;
@@ -124,119 +107,226 @@ public class EtcdModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        try {
-            String url = settings.getString(SETTINGS_KEY_ETCD_URL, DEFAULT_ETCD_URL);
+        ThreadModule m = new ThreadModule().builder(ETCD_THREADPOOL_BINDING).daemon().forkJoin()
+                .withExplicitThreadCount(settings.getInt(SETTINGS_KEY_ETCD_NETWORK_THREAD_COUNT, DEFAULT_ETCD_NETWORK_THREAD_COUNT))
+                .bind();
 
-            Duration refresh = Duration.standardSeconds(settings.getLong(SETTINGS_KEY_ETCD_REFRESH_INTERVAL_SECONDS, DEFAULT_ETCD_REFRESH_INTERVAL_SECONDS));
-            bind(Duration.class).annotatedWith(Names.named(GUICE_BINDING_ETCD_REFRESH_INTERVAL)).toInstance(refresh);
-            bind(ScheduledExecutorService.class).annotatedWith(Names.named(GUICE_BINDING_ETCD_REFRESH_THREAD_POOL)).toInstance(Executors.newSingleThreadScheduledExecutor());
-            bind(ThreadPoolAndHttpClientShutdown.class).asEagerSingleton();
-//            CloseableHttpAsyncClient httpclient = buildDefaultHttpClient();
-//            bind(CloseableHttpAsyncClient.class).toInstance(httpclient);
+        install(m);
+        bind(EtcdClient.class).toProvider(EtcdClientProvider.class);
+        bind(TrustManagerSupplier.class).toInstance(new TrustManagerSupplier(trust));
 
-            HttpClient httpClient = HttpClient.builder()
-                            .maxChunkSize(512)
-                            .noCompression()
-                            .maxInitialLineLength(255)
-                            .followRedirects()
-                            .threadCount(1)
-                            .dontSend100Continue()
-                            .build();
-            bind(HttpClient.class).annotatedWith(Names.named(GUICE_BINDING_HTTP_CLIENT))
-                    .toInstance(httpClient);
+        Provider<EtcdClient> etcdClientProvider = binder().getProvider(EtcdClient.class);
+        bind(KvClient.class).toProvider(new XformProvider<>(etcdClientProvider,
+                client -> client.getKvClient()));
+        bind(LeaseClient.class).toProvider(new XformProvider<>(etcdClientProvider,
+                client -> client.getLeaseClient()));
+        bind(LockClient.class).toProvider(new XformProvider<>(etcdClientProvider,
+                client -> client.getLockClient()));
+        bind(PersistentLease.class).toProvider(new XformProvider<>(etcdClientProvider,
+                client -> client.getSessionLease()));
+    }
 
-            List<EtcdClient> clients = new ArrayList<>();
-            for (String u : url.split(",")) {
-                clients.add(new EtcdClient(new URI(u), httpClient));
+    private TrustManagerFactory trust;
+
+    public EtcdModule setTrustManager(TrustManagerFactory trust) {
+        if (this.trust != null) {
+            throw new ConfigurationError("Trust manager already set");
+        }
+        this.trust = trust;
+        return this;
+    }
+
+    static final class XformProvider<X, T> implements Provider<T> {
+
+        private final Provider<X> orig;
+        private final Function<X, T> xform;
+        private volatile T cached;
+
+        public XformProvider(Provider<X> orig, Function<X, T> xform) {
+            this.orig = orig;
+            this.xform = xform;
+        }
+
+        @Override
+        public T get() {
+            T cached = this.cached;
+            if (cached == null) {
+                synchronized (this) {
+                    cached = this.cached;
+                    if (cached == null) {
+                        this.cached = cached = xform.apply(orig.get());
+                    }
+                }
             }
-            EtcdClient[] arr = clients.toArray(new EtcdClient[0]);
-            MetaEtcdClient meta = new MetaEtcdClient(settings, arr);
-            bind(EtcdClient.class).toProvider(meta);
-            bind(MetaEtcdClient.class).toInstance(meta);
-            bind(EtcdClient[].class).toInstance(arr);
-        } catch (URISyntaxException ex) {
-            Exceptions.chuck(ex);
+            return cached;
         }
     }
 
-//    static CloseableHttpAsyncClient buildDefaultHttpClient() {
-//        // TODO: Increase timeout??
-//        RequestConfig requestConfig = RequestConfig.custom().build();
-//        CloseableHttpAsyncClient httpClient = HttpAsyncClients.custom().setDefaultRequestConfig(requestConfig).build();
-//        httpClient.start();
-//        return httpClient;
-//    }
-    public static Settings forNamespace(String namespace, Receiver<?>... deps) throws IOException {
-        return create(DEFAULT_ETCD_URL, namespace, deps);
-    }
+    static final class TrustManagerSupplier implements Supplier<TrustManagerFactory> {
 
-    public static Settings create(String url, Receiver<?>... deps) throws IOException {
-        return create(url, "/", deps);
-    }
+        private final TrustManagerFactory factory;
 
-    public static Settings create(String url, String namespace, Receiver<?>... deps) throws IOException {
-        SettingsBuilder sb = new SettingsBuilder(namespace).addDefaultLocations()
-                .add(SETTINGS_KEY_ETCD_NAMESPACE, namespace)
-                .add(SETTINGS_KEY_ETCD_URL, url);
-        Settings s = sb.build();
-        return create(s, deps);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static Settings create(Settings s, Receiver<?>... dep) throws IOException {
-        Dependencies deps = new Dependencies(s, new EtcdModule(s));
-        for (Receiver r : dep) {
-            r.receive(deps);
+        public TrustManagerSupplier(TrustManagerFactory factory) {
+            this.factory = factory;
         }
-        return deps.getInstance(EtcdSettings.class);
-    }
 
-    public static MutableSettings forNamespaceMutable(String namespace, Receiver<?>... deps) throws IOException {
-        return createMutable(DEFAULT_ETCD_URL, namespace, deps);
-    }
-
-    public static MutableSettings createMutable(String url, Receiver<?>... deps) throws IOException {
-        return createMutable(url, "/", deps);
-    }
-
-    public static MutableSettings createMutable(String url, String namespace, Receiver<?>... deps) throws IOException {
-        SettingsBuilder sb = new SettingsBuilder(namespace).addDefaultLocations()
-                .add(SETTINGS_KEY_ETCD_NAMESPACE, namespace)
-                .add(SETTINGS_KEY_ETCD_URL, url);
-        Settings s = sb.build();
-        return createMutable(s, deps);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static MutableSettings createMutable(Settings s, Receiver<?>... dep) throws IOException {
-        Dependencies deps = new Dependencies(s, new EtcdModule(s));
-        for (Receiver r : dep) {
-            r.receive(deps);
+        @Override
+        public TrustManagerFactory get() {
+            return factory;
         }
-        return deps.getInstance(MutableEtcdSettings.class);
+
     }
 
-    private static class ThreadPoolAndHttpClientShutdown implements Runnable {
+    @Singleton
+    static class EtcdClientSupplier implements ThrowingSupplier<EtcdClient> {
 
-        private final HttpClient httpClient;
-        private final EtcdErrorHandler handler;
+        private final Provider<Executor> netExecutor;
+        private final Provider<Settings> settings;
+        private final Provider<DeploymentMode> mode;
+        private final Provider<TrustManagerSupplier> trust;
+        private final Provider<ShutdownHookRegistry> reg;
 
-//        private final CloseableHttpAsyncClient httpClient;
         @Inject
-        ThreadPoolAndHttpClientShutdown(@Named(GUICE_BINDING_ETCD_REFRESH_THREAD_POOL) ScheduledExecutorService svc, ShutdownHookRegistry reg, /*CloseableHttpAsyncClient httpClient*/ HttpClient httpClient, EtcdErrorHandler handler) {
-            reg.add(svc);
-            this.httpClient = httpClient;
-            reg.add(this);
-            this.handler = handler;
+        EtcdClientSupplier(@Named(ETCD_THREADPOOL_BINDING) Provider<Executor> netExecutor,
+                Provider<Settings> settings, Provider<DeploymentMode> mode,
+                Provider<TrustManagerSupplier> trust, Provider<ShutdownHookRegistry> reg) {
+            this.netExecutor = netExecutor;
+            this.settings = settings;
+            this.mode = mode;
+            this.trust = trust;
+            this.reg = reg;
         }
 
-        public void run() {
-            try {
-//                httpClient.close();
-                httpClient.shutdown();
-            } catch (Exception ex) {
-                handler.onException(ex);
+        String settingsOrEnv(String envKey, String settingsKey, String defaultValue) {
+            String result = System.getenv(envKey);
+            if (result == null) {
+                result = settings.get().getString(settingsKey, defaultValue);
             }
+            return result;
+        }
+
+        @Override
+        public EtcdClient get() throws Exception {
+            List<String> l = Arrays.asList(Strings.split(',',
+                    settings.get().getString(SETTINGS_KEY_ETCD_ENDPOINTS, DEFAULT_ETCD_ENDPOINT)));
+            EtcdClient.Builder bldr = EtcdClient.forEndpoints(l)
+                    .withUserExecutor(netExecutor.get())
+                    .withThreadCount(settings.get().getInt(SETTINGS_KEY_ETCD_NETWORK_THREAD_COUNT, DEFAULT_ETCD_NETWORK_THREAD_COUNT))
+                    .sendViaEventLoop(settings.get().getBoolean(SETTINGS_KEY_ETCD_SEND_VIA_EVENT_LOOP, DEFAULT_ETCD_SEND_VIA_EVENT_LOOP))
+                    .withMaxInboundMessageSize(settings.get().getInt(SETTINGS_KEY_ETCD_MAX_INBOUND_MESSAGE_SIZE, DEFAULT_ETCD_MAX_INBOUND_MESSAGE_SIZE));
+            Long timeout = settings.get().getLong(SETTINGS_KEY_ETCD_DEFAULT_TIMEOUT_MS);
+            if (timeout != null) {
+                bldr = bldr.withDefaultTimeout(timeout, TimeUnit.MILLISECONDS);
+            }
+            if (settings.get().getBoolean(SETTINGS_KEY_ETCD_IMMEDIATE_AUTH, DEFAULT_ETCD_IMMEDIATE_AUTH)) {
+                bldr = bldr.withImmediateAuth();
+            }
+            String user = settingsOrEnv(ENV_KEY_ETCD_USER, SETTINGS_KEY_ETCD_USER, null);
+            String password = settingsOrEnv(ENV_KEY_ETCD_PASSWORD, SETTINGS_KEY_ETCD_PASSWORD, null);
+            if ((user == null) != (password == null)) {
+                throw new ConfigurationError("Etcd user and password must either BOTH be null or both be set, but got " + user + ":" + password);
+            }
+            if (user != null) {
+                bldr = bldr.withCredentials(user, password);
+            }
+            boolean plainText = settings.get().getBoolean(SETTINGS_KEY_ETCD_PLAIN_TEXT, !mode.get().isProduction());
+            if (plainText) {
+                bldr = bldr.withPlainText();
+            }
+            String certFile = settings.get().getString(SETTINGS_KEY_ETCD_CERT);
+            if (certFile != null) {
+                bldr = bldr.withCaCert(new FileByteSource(certFile));
+            }
+            if (trust.get().get() != null) {
+                bldr.withTrustManager(trust.get().get());
+            }
+            Integer sessionTimeoutSeconds = settings.get().getInt(SETTINGS_KEY_ETCD_SESSION_TIMEOUT_SECONDS);
+            if (sessionTimeoutSeconds != null) {
+                bldr = bldr.withSessionTimeoutSecs(sessionTimeoutSeconds);
+            }
+            EtcdClient result = bldr.build();
+            reg.get().add(result);
+            return result;
+        }
+    }
+
+    static final class FileByteSource extends ByteSource {
+
+        private final String file;
+
+        FileByteSource(String file) {
+            this.file = file;
+        }
+
+        @Override
+        public InputStream openStream() throws IOException {
+            Path path = Paths.get(file);
+            if (!Files.exists(path)) {
+                throw new ConfigurationError("File does not exist: " + file);
+            }
+            if (Files.isDirectory(path)) {
+                throw new ConfigurationError("File is a directory: " + file);
+            }
+            return Files.newInputStream(path, StandardOpenOption.READ);
+        }
+    }
+
+    static class EtcdClientProvider extends ReplaceableProvider<EtcdClient> {
+
+        @Inject
+        public EtcdClientProvider(EtcdClientSupplier supp) {
+            super(supp);
+        }
+
+    }
+
+    static class ReplaceableProvider<T> implements Provider<T> {
+
+        private final AtomicReference<Provider<T>> ref = new AtomicReference<>();
+
+        public ReplaceableProvider(ThrowingSupplier<T> supp) {
+            ref.set(new LazyProvider<>(supp, ref));
+        }
+
+        @Override
+        public T get() {
+            return ref.get().get();
+        }
+    }
+
+    static final class LazyProvider<T> implements Provider<T> {
+
+        private final ThrowingSupplier<T> supp;
+        private final AtomicReference<Provider<T>> ref;
+
+        public LazyProvider(ThrowingSupplier<T> supp, AtomicReference<Provider<T>> ref) {
+            this.supp = supp;
+            this.ref = ref;
+        }
+
+        @Override
+        public synchronized T get() {
+            try {
+                T result = supp.get();
+                ref.set(new FixedProvider<>(result));
+                return result;
+            } catch (Exception ex) {
+                return Exceptions.chuck(ex);
+            }
+        }
+    }
+
+    static final class FixedProvider<T> implements Provider<T> {
+
+        private final T obj;
+
+        public FixedProvider(T obj) {
+            this.obj = obj;
+        }
+
+        @Override
+        public T get() {
+            return obj;
         }
     }
 }

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2014 Tim Boudreau.
+ * Copyright 2019 Mastfrog Technologies.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,17 +23,13 @@
  */
 package com.mastfrog.giulius.settings.etcd;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 /**
+ * Object which can be injected into a test which will rethrow any exceptions
+ * thrown in the etcd client's executor.
  *
  * @author Tim Boudreau
  */
-class EtcdErrorHandlerImpl implements EtcdErrorHandler {
+public interface Rethrow {
 
-    @Override
-    public void onException(Exception e) {
-        Logger.getLogger(EtcdErrorHandlerImpl.class.getName()).log(Level.SEVERE, "Refresh exception", e);
-    }
+    void rethrow() throws Throwable;
 }
