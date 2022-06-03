@@ -6,18 +6,26 @@ open module com.mastfrog.giulius.settings.etcd {
     requires com.google.guice;
 
     // Inferred from source scan
+    requires com.mastfrog.collections;
+
+    // Inferred from source scan
     requires com.mastfrog.function;
 
     // Sibling com.mastfrog/giulius-3.0.0-dev
 
     // Transitive detected by source scan
     requires com.mastfrog.giulius;
+    requires com.mastfrog.giulius.tests;
+    requires javax.inject;
 
     // Sibling com.mastfrog/giulius-settings-3.0.0-dev
     requires com.mastfrog.giulius.settings;
 
     // Sibling com.mastfrog/giulius-threadpool-3.0.0-dev
     requires com.mastfrog.giulius.threadpool;
+
+    // Inferred from source scan
+    requires com.mastfrog.net;
 
     // Inferred from source scan
     requires com.mastfrog.preconditions;
@@ -54,9 +62,10 @@ open module com.mastfrog.giulius.settings.etcd {
     // derived from io.netty/netty-transport-native-unix-common-4.1.76.Final in io/netty/netty-transport-native-unix-common/4.1.76.Final/netty-transport-native-unix-common-4.1.76.Final.pom
     requires io.netty.transport.unix.common;
 
+    // Inferred from test-source-scan
+    requires junit;
+
     // derived from joda-time/joda-time-2.10.14 in joda-time/joda-time/2.10.14/joda-time-2.10.14.pom
     requires org.joda.time;
 
-    requires javax.inject;
-    requires com.google.protobuf;
 }
