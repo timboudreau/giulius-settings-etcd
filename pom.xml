@@ -42,7 +42,6 @@
 
             <groupId>com.ibm.etcd</groupId>
             <artifactId>etcd-java</artifactId>
-            <version>0.0.20</version>
             <exclusions>
 
                 <exclusion>
