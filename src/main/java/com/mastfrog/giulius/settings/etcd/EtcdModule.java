@@ -35,9 +35,9 @@ import com.ibm.etcd.client.lease.PersistentLease;
 import com.ibm.etcd.client.lock.LockClient;
 import com.mastfrog.function.throwing.ThrowingSupplier;
 import com.mastfrog.giulius.DeploymentMode;
-import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.giulius.thread.ThreadModule;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.shutdown.hooks.ShutdownHookRegistry;
 import com.mastfrog.util.preconditions.ConfigurationError;
 import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.Strings;
@@ -245,7 +245,7 @@ public class EtcdModule extends AbstractModule {
                 bldr = bldr.withSessionTimeoutSecs(sessionTimeoutSeconds);
             }
             EtcdClient result = bldr.build();
-            reg.get().add(result);
+            reg.get().addResource(result);
             return result;
         }
     }
