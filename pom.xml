@@ -26,10 +26,6 @@
 
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>giulius-settings</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>giulius-threadpool</artifactId>
         </dependency>
         <dependency>
@@ -82,16 +78,8 @@
         </dependency>
 
         <dependency>
-            <groupId>com.google.inject</groupId>
-            <artifactId>guice</artifactId>
-        </dependency>
-        <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>giulius</artifactId>
         </dependency>
         <dependency>
             <groupId>com.mastfrog</groupId>
