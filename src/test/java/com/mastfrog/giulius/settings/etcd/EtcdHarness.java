@@ -28,7 +28,7 @@ import com.google.inject.Key;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.google.inject.util.Providers;
-import com.mastfrog.giulius.DeploymentMode;
+import com.mastfrog.shutdown.hooks.DeploymentMode;
 import com.mastfrog.giulius.settings.etcd.EtcdModule.EtcdClientSupplier;
 import static com.mastfrog.giulius.settings.etcd.EtcdModule.SETTINGS_KEY_ETCD_NETWORK_THREAD_COUNT;
 import com.mastfrog.giulius.settings.etcd.EtcdModule.TrustManagerSupplier;
